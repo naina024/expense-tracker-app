@@ -7,6 +7,7 @@ export const SCREEN = {
 
 export const ACTIONS = {
     ADD: 'ADD',
+    SET: 'SET',
     UPDATE: 'UPDATE',
     DELETE: 'DELETE',
 }

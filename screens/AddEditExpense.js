@@ -1,16 +1,21 @@
-import { useEffect, useContext } from 'react';
+import { useEffect, useContext, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 
 import { GlobalStyles } from '../styles';
+import { deleteExpense, storeExpense, updateExpense } from '../utils/http.utils';
 
 import { ExpensesContext } from './store/context/expenses.context';
 
 import IconButton from '../components/UI/IconButton';
 import ExpenseForm from '../components/ExpenseForm';
+import Loader from '../components/UI/Loader';
+import ErrorOverlay from '../components/UI/ErrorOverlay';
 
 function AddEditExpense({route, navigation}){
 
     const expensesContext = useContext(ExpensesContext);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState();
 
     const expenseId = route.params && route.params.expenseId;
     const isEditMode = !!expenseId;
@@ -25,22 +30,45 @@ function AddEditExpense({route, navigation}){
         }, [navigation, isEditMode])
     })
 
-    deleteExpenseHandler = () => {
-        expensesContext.deleteExpense(expenseId);
-        navigation.goBack();
+    async function deleteExpenseHandler(){
+        setIsSubmitting(true);
+        try{
+          await deleteExpense(expenseId);
+          expensesContext.deleteExpense(expenseId);
+          navigation.goBack();
+        } catch {
+          setError('Could not delete the expense');
+        }
+        setIsSubmitting(false);
     }
 
     cancelHandler = () => {
         navigation.goBack();
     }
 
-    confirmHandler = (expenseData) => {
-        if (isEditMode){
+    async function confirmHandler(expenseData) {
+        setIsSubmitting(true);
+        try{
+          if (isEditMode){
+            await updateExpense(expenseId, expenseData);
             expensesContext.updateExpense(expenseId, expenseData);
-        } else{
-            expensesContext.addExpense(expenseData);
+          } else{
+            const id = await storeExpense(expenseData);
+            expensesContext.addExpense({...expenseData, id});
+          }
+          navigation.goBack();
+        } catch {
+          setError('Could not save data - please try again later!');
+          setIsSubmitting(false);
         }
-        navigation.goBack();
+    }
+
+    if (error && !isSubmitting){
+      return <ErrorOverlay message={error} onConfirm={cancelHandler} />
+    }
+
+    if(isSubmitting){
+      return <Loader/>
     }
 
     return (
